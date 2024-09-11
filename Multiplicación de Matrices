@@ -1,0 +1,95 @@
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <chrono>
+
+using namespace std;
+using namespace std::chrono;
+
+// Función para leer matrices desde el archivo
+void readMatrices(string filename, vector<vector<vector<int>>> &matrices) {
+    ifstream infile(filename);
+    int size;
+    
+    // Leer las matrices
+    while (infile >> size) {
+        vector<vector<int>> A(size, vector<int>(size));
+        vector<vector<int>> B(size, vector<int>(size));
+
+        for (int i = 0; i < size; ++i)
+            for (int j = 0; j < size; ++j)
+                infile >> A[i][j];
+
+        for (int i = 0; i < size; ++i)
+            for (int j = 0; j < size; ++j)
+                infile >> B[i][j];
+
+        matrices.push_back(A);
+        matrices.push_back(B);
+    }
+    infile.close();
+}
+
+// Algoritmo cúbico tradicional
+void traditionalCubic(const vector<vector<int>> &A, const vector<vector<int>> &B, vector<vector<int>> &C, int size) {
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            C[i][j] = 0;
+            for (int k = 0; k < size; ++k) {
+                C[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+}
+
+// Algoritmo cúbico optimizado con transposición
+void optimizedCubicTranspose(const vector<vector<int>> &A, vector<vector<int>> B, vector<vector<int>> &C, int size) {
+    // Transponer la matriz B
+    for (int i = 0; i < size; ++i) {
+        for (int j = i + 1; j < size; ++j) {
+            swap(B[i][j], B[j][i]);
+        }
+    }
+
+    // Multiplicación con la matriz transpuesta
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            C[i][j] = 0;
+            for (int k = 0; k < size; ++k) {
+                C[i][j] += A[i][k] * B[j][k];
+            }
+        }
+    }
+}
+
+int main() {
+    vector<vector<vector<int>>> matrices;
+    string filename = "matrices_test.txt";
+    
+    readMatrices(filename, matrices);  // Lee todas las matrices del archivo
+
+    for (int i = 0; i < matrices.size(); i += 2) {
+        vector<vector<int>> A = matrices[i];
+        vector<vector<int>> B = matrices[i + 1];
+        int size = A.size();
+        vector<vector<int>> C(size, vector<int>(size, 0));  // Inicializar matriz de resultados
+
+        cout << "Multiplicando matrices de tamaño " << size << "x" << size << ":" << endl;
+
+        // Medir el tiempo de la multiplicación con algoritmo cúbico tradicional
+        auto start1 = steady_clock::now();
+        traditionalCubic(A, B, C, size);
+        auto end1 = steady_clock::now();
+        cout << "Tiempo de ejecución traditionalCubic (" << size << "x" << size << "): " 
+             << duration_cast<microseconds>(end1 - start1).count() << " µs" << endl;
+
+        // Medir el tiempo de la multiplicación con algoritmo cúbico optimizado
+        auto start2 = steady_clock::now();
+        optimizedCubicTranspose(A, B, C, size);
+        auto end2 = steady_clock::now();
+        cout << "Tiempo de ejecución optimizedCubicTranspose (" << size << "x" << size << "): " 
+             << duration_cast<microseconds>(end2 - start2).count() << " µs" << endl;
+    }
+
+    return 0;
+}
