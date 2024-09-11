@@ -1,0 +1,241 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <algorithm>
+#include <chrono>
+
+// Implementaciones de algoritmos de ordenamiento
+
+void selectionSort(std::vector<int>& arr) {
+    int n = arr.size();
+    for (int i = 0; i < n - 1; ++i) {
+        int minIndex = i;
+        for (int j = i + 1; j < n; ++j) {
+            if (arr[j] < arr[minIndex]) {
+                minIndex = j;
+            }
+        }
+        std::swap(arr[i], arr[minIndex]);
+    }
+}
+
+void merge(std::vector<int>& arr, int left, int mid, int right) {
+    int n1 = mid - left + 1;
+    int n2 = right - mid;
+    std::vector<int> L(n1), R(n2);
+
+    for (int i = 0; i < n1; ++i)
+        L[i] = arr[left + i];
+    for (int j = 0; j < n2; ++j)
+        R[j] = arr[mid + 1 + j];
+
+    int i = 0, j = 0, k = left;
+    while (i < n1 && j < n2) {
+        if (L[i] <= R[j]) {
+            arr[k] = L[i];
+            i++;
+        } else {
+            arr[k] = R[j];
+            j++;
+        }
+        k++;
+    }
+    while (i < n1) {
+        arr[k] = L[i];
+        i++;
+        k++;
+    }
+    while (j < n2) {
+        arr[k] = R[j];
+        j++;
+        k++;
+    }
+}
+
+void mergeSort(std::vector<int>& arr, int left, int right) {
+    if (left >= right) return;
+    int mid = left + (right - left) / 2;
+    mergeSort(arr, left, mid);
+    mergeSort(arr, mid + 1, right);
+    merge(arr, left, mid, right);
+}
+
+int partition(std::vector<int>& arr, int low, int high) {
+    int pivot = arr[high];
+    int i = low - 1;
+    for (int j = low; j < high; j++) {
+        if (arr[j] < pivot) {
+            i++;
+            std::swap(arr[i], arr[j]);
+        }
+    }
+    std::swap(arr[i + 1], arr[high]);
+    return i + 1;
+}
+
+void quickSort(std::vector<int>& arr, int low, int high) {
+    if (low < high) {
+        int pi = partition(arr, low, high);
+        quickSort(arr, low, pi - 1);
+        quickSort(arr, pi + 1, high);
+    }
+}
+
+// Función para cargar arreglos desde el archivo y medir el tiempo de ejecución por bloques de 100
+double sortAndMeasureBlock(const std::string& algorithmName, void (*sortFunc)(std::vector<int>&), const std::vector<std::vector<int>>& arrays) {
+    using namespace std::chrono;
+
+    double total_time = 0.0;
+
+    std::cout << "Probando " << algorithmName << "...\n";
+
+    for (auto& arr : arrays) {
+        std::vector<int> temp = arr; // Copia del arreglo original
+        high_resolution_clock::time_point start = high_resolution_clock::now(); // Tiempo de inicio
+        sortFunc(temp); // Ejecuta la función de ordenamiento
+        high_resolution_clock::time_point end = high_resolution_clock::now(); // Tiempo de fin
+        duration<double> time_span = duration_cast<duration<double>>(end - start);
+        total_time += time_span.count();
+    }
+
+    return total_time / arrays.size(); // Retorna el tiempo promedio
+}
+
+double sortAndMeasureMergeBlock(const std::vector<std::vector<int>>& arrays) {
+    using namespace std::chrono;
+
+    double total_time = 0.0;
+
+    std::cout << "Probando Merge Sort...\n";
+
+    for (auto& arr : arrays) {
+        std::vector<int> temp = arr; // Copia del arreglo original
+        high_resolution_clock::time_point start = high_resolution_clock::now(); // Tiempo de inicio
+        mergeSort(temp, 0, temp.size() - 1); // Ejecuta mergesort
+        high_resolution_clock::time_point end = high_resolution_clock::now(); // Tiempo de fin
+        duration<double> time_span = duration_cast<duration<double>>(end - start);
+        total_time += time_span.count();
+    }
+
+    return total_time / arrays.size(); // Retorna el tiempo promedio
+}
+
+// Función que carga los arreglos desde el archivo
+std::vector<std::vector<int>> loadArraysFromFile(const std::string& filename) {
+    std::ifstream inFile(filename);
+    if (!inFile) {
+        std::cerr << "Error al abrir el archivo para lectura." << std::endl;
+        exit(1);
+    }
+
+    std::vector<std::vector<int>> arrays;
+    std::string line;
+
+    while (std::getline(inFile, line)) {
+        std::vector<int> arr;
+        std::stringstream ss(line);
+        int num;
+        while (ss >> num) {
+            arr.push_back(num);
+        }
+
+        arrays.push_back(arr); // Guardar el arreglo
+    }
+
+    inFile.close();
+    return arrays;
+}
+
+// Función para dividir los arreglos en bloques de 100
+std::vector<std::vector<std::vector<int>>> splitIntoBlocks(const std::vector<std::vector<int>>& arrays) {
+    std::vector<std::vector<std::vector<int>>> blocks;
+    for (size_t i = 0; i < arrays.size(); i += 100) {
+        blocks.push_back(std::vector<std::vector<int>>(arrays.begin() + i, arrays.begin() + i + 100));
+    }
+    return blocks;
+}
+
+int main() {
+    // Cargar arreglos del archivo
+    std::vector<std::vector<int>> arrays = loadArraysFromFile("arrays.txt");
+
+    // Dividir los arreglos en 3 grupos de 500 arreglos cada uno
+    std::vector<std::vector<int>> sortedArrays(arrays.begin(), arrays.begin() + 500);
+    std::vector<std::vector<int>> partiallySortedArrays(arrays.begin() + 500, arrays.begin() + 1000);
+    std::vector<std::vector<int>> unsortedArrays(arrays.begin() + 1000, arrays.end());
+
+    // Dividir cada grupo de 500 arreglos en bloques de 100
+    auto sortedBlocks = splitIntoBlocks(sortedArrays);
+    auto partiallySortedBlocks = splitIntoBlocks(partiallySortedArrays);
+    auto unsortedBlocks = splitIntoBlocks(unsortedArrays);
+
+    // Probar cada algoritmo de ordenamiento y medir tiempos para cada bloque de 100 arreglos
+
+    // Selection Sort
+    for (size_t i = 0; i < sortedBlocks.size(); ++i) {
+        double avgSortedSelection = sortAndMeasureBlock("Selection Sort", selectionSort, sortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (Selection Sort, ordenados): " << avgSortedSelection << " segundos\n";
+    }
+    
+    for (size_t i = 0; i < partiallySortedBlocks.size(); ++i) {
+        double avgPartiallySortedSelection = sortAndMeasureBlock("Selection Sort", selectionSort, partiallySortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (Selection Sort, parcialmente ordenados): " << avgPartiallySortedSelection << " segundos\n";
+    }
+
+    for (size_t i = 0; i < unsortedBlocks.size(); ++i) {
+        double avgUnsortedSelection = sortAndMeasureBlock("Selection Sort", selectionSort, unsortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (Selection Sort, desordenados): " << avgUnsortedSelection << " segundos\n";
+    }
+
+    // Merge Sort
+    for (size_t i = 0; i < sortedBlocks.size(); ++i) {
+        double avgSortedMerge = sortAndMeasureMergeBlock(sortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (Merge Sort, ordenados): " << avgSortedMerge << " segundos\n";
+    }
+    
+    for (size_t i = 0; i < partiallySortedBlocks.size(); ++i) {
+        double avgPartiallySortedMerge = sortAndMeasureMergeBlock(partiallySortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (Merge Sort, parcialmente ordenados): " << avgPartiallySortedMerge << " segundos\n";
+    }
+
+    for (size_t i = 0; i < unsortedBlocks.size(); ++i) {
+        double avgUnsortedMerge = sortAndMeasureMergeBlock(unsortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (Merge Sort, desordenados): " << avgUnsortedMerge << " segundos\n";
+    }
+
+    // Quick Sort
+    for (size_t i = 0; i < sortedBlocks.size(); ++i) {
+        double avgSortedQuick = sortAndMeasureBlock("Quick Sort", [](std::vector<int>& arr){ quickSort(arr, 0, arr.size() - 1); }, sortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (Quick Sort, ordenados): " << avgSortedQuick << " segundos\n";
+    }
+    
+    for (size_t i = 0; i < partiallySortedBlocks.size(); ++i) {
+        double avgPartiallySortedQuick = sortAndMeasureBlock("Quick Sort", [](std::vector<int>& arr){ quickSort(arr, 0, arr.size() - 1); }, partiallySortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (Quick Sort, parcialmente ordenados): " << avgPartiallySortedQuick << " segundos\n";
+    }
+
+    for (size_t i = 0; i < unsortedBlocks.size(); ++i) {
+        double avgUnsortedQuick = sortAndMeasureBlock("Quick Sort", [](std::vector<int>& arr){ quickSort(arr, 0, arr.size() - 1); }, unsortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (Quick Sort, desordenados): " << avgUnsortedQuick << " segundos\n";
+    }
+
+    // std::sort
+    for (size_t i = 0; i < sortedBlocks.size(); ++i) {
+        double avgSortedStdSort = sortAndMeasureBlock("std::sort", [](std::vector<int>& arr){ std::sort(arr.begin(), arr.end()); }, sortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (std::sort, ordenados): " << avgSortedStdSort << " segundos\n";
+    }
+    
+    for (size_t i = 0; i < partiallySortedBlocks.size(); ++i) {
+        double avgPartiallySortedStdSort = sortAndMeasureBlock("std::sort", [](std::vector<int>& arr){ std::sort(arr.begin(), arr.end()); }, partiallySortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (std::sort, parcialmente ordenados): " << avgPartiallySortedStdSort << " segundos\n";
+    }
+
+    for (size_t i = 0; i < unsortedBlocks.size(); ++i) {
+        double avgUnsortedStdSort = sortAndMeasureBlock("std::sort", [](std::vector<int>& arr){ std::sort(arr.begin(), arr.end()); }, unsortedBlocks[i]);
+        std::cout << "Promedio para bloque " << i + 1 << " (std::sort, desordenados): " << avgUnsortedStdSort << " segundos\n";
+    }
+
+    return 0;
+}
